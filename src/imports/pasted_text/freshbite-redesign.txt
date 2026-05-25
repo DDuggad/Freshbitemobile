@@ -1,0 +1,196 @@
+Take an existing web app called "FreshBite" and redesign it into a highly interactive, mobile-first UI in Figma.
+
+CONTEXT:
+FreshBite is a Bangalore-based surplus food marketplace connecting PURE VEG restaurants with users. Customers reserve discounted food and pick it up. Vendors manage deals via dashboard.
+
+IMPORTANT:
+- NO delivery features
+- Focus on "Reserve", "Pickup", "Save Food"
+- Region: Bangalore, India (₹ currency, Indian UI patterns)
+
+----------------------------------
+
+🎨 DESIGN STYLE:
+
+- Modern glassmorphism UI
+- Frosted cards with backdrop blur
+- Soft gradients (green-based)
+- Smooth transitions (0.3s ease)
+
+COLOR SYSTEM:
+- Primary: #10b981 (green)
+- Dark: #064e3b
+- Accent: #dc2626 (discounts)
+- Background: soft off-white / light gradient
+
+TYPOGRAPHY:
+- Inter / Poppins
+- Clear hierarchy (bold headings, readable body)
+
+----------------------------------
+
+📱 SCREENS TO DESIGN (MOBILE-FIRST):
+
+1. SPLASH / ONBOARDING
+- Logo centered
+- Tagline: "Save money. Save food."
+- Smooth fade-in animation
+- Optional slides (Discover → Reserve → Pickup)
+
+----------------------------------
+
+2. AUTH FLOW
+
+LOGIN:
+- Clean input fields
+- Floating labels
+- Green CTA button
+- Micro-interactions on focus
+
+REGISTER:
+- Role selection (Customer / Vendor)
+- Smooth form transitions
+
+----------------------------------
+
+3. MAIN APP (BOTTOM NAVIGATION)
+
+Tabs:
+- Home
+- Search
+- Profile
+
+Use floating/glass bottom navbar with active indicator animation.
+
+----------------------------------
+
+4. HOME / DEALS FEED
+
+- Location selector (Bangalore areas)
+- Search bar with animation
+- Filter chips:
+  South Indian, Jain 🟢, Bakery, etc.
+
+DEAL CARD DESIGN:
+- Glassmorphic card
+- Food image with slight zoom on hover
+- Discount badge (animated pulse)
+- Info:
+  - Restaurant name
+  - Pickup time (highlighted)
+  - Distance
+  - ₹ original → discounted
+
+- Stock indicator:
+  "Only 3 left" (progress bar)
+
+- CTA:
+  "Reserve" (sticky or prominent)
+
+----------------------------------
+
+5. SEARCH SCREEN
+
+- Expandable search bar
+- Filters drawer (slide-up interaction)
+- Smart suggestions UI
+
+----------------------------------
+
+6. DEAL DETAILS PAGE
+
+- Large hero image
+- Glass overlay info card
+
+CONTENT:
+- Restaurant info
+- Pickup window
+- Google Maps preview
+- Description
+
+INTERACTIONS:
+- Sticky bottom CTA: "Reserve for Pickup"
+- Countdown timer for deal expiry
+
+----------------------------------
+
+7. PROFILE (USER)
+
+- Saved deals
+- Reservations
+- Settings
+
+----------------------------------
+
+8. VENDOR FLOW
+
+VENDOR DASHBOARD:
+- Analytics cards (glass style)
+  - Active deals
+  - Revenue
+  - Meals saved
+
+- Quick actions:
+  Add Deal
+
+MANAGE DEALS:
+- Editable cards
+- Swipe actions (edit/delete)
+
+ADD DEAL:
+- Step-based form
+- Image upload UI
+- Price validation UI
+
+----------------------------------
+
+✨ INTERACTIVITY (VERY IMPORTANT):
+
+- Hover/press states for all buttons
+- Card lift + shadow animation
+- Smooth page transitions
+- Skeleton loaders for deals
+- Success animation (reservation confirmed)
+- Error states with friendly UI
+
+----------------------------------
+
+🌱 BRANDING DETAILS:
+
+- Jain food indicator: green dot 🟢
+- Eco icons (leaf, sustainability)
+- Impact stats:
+  "120+ meals saved"
+
+----------------------------------
+
+📐 SYSTEM DESIGN:
+
+- 8px spacing grid
+- Auto Layout everywhere
+- Component variants:
+  - Buttons (default / hover / disabled)
+  - Cards
+  - Inputs
+  - Chips
+
+----------------------------------
+
+📱 MOBILE UX IMPROVEMENTS:
+
+- Sticky bottom CTA ("Reserve")
+- Thumb-friendly spacing
+- Bottom sheet modals
+- Swipe gestures
+
+----------------------------------
+
+OUTPUT:
+
+- High-fidelity Figma file
+- Organized pages:
+  - Auth
+  - Customer App
+  - Vendor App
+  - Components
+- Include interaction states + prototypes
