@@ -226,6 +226,8 @@ export interface NewDealData {
   pickupTime?: string;
   description?: string;
   expiresAt?: string;
+  dealStartTime?: string;
+  dealEndTime?: string;
 }
 
 // ─── Authentication ───

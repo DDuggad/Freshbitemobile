@@ -5,7 +5,7 @@ interface LogoProps {
 }
 
 const LOGO_SRC =
-  'https://lh3.googleusercontent.com/pw/AP1GczOMCfZo3UKZmrxq_x2BauTnotuA94pKEoonOhk95LfJsjaXzDyeMB-Kewm4qALPmmQSJsE7ADJKelAprDomIKgrGadpyFj_BX3Tkj6yzkflraz-8XSZWm_-R9S8PpPXxj1R3VlknIr3zZNMiTona6k=w945-h945-s-no-gm';
+  'https://lh3.googleusercontent.com/pw/AP1GczP3nvlkP4zcuXMmh-TLkq-mh-caAR_G79GimX_77mAgo-ljUkuOzTdRdv451UFxgiWLn_P6xQ16ZIrTE_8dWiJrn05wPQeasGngdBpaJcMwMEBxSYg_0NhmAt0MQFBuUj5HdCiVzZpCBEUB0WU5YiFdUw=w928-h928-s-no-gm';
 
 export function Logo({ size = 36, className = '', showText = false }: LogoProps) {
   if (!showText) {

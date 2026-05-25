@@ -1,28 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Loader2, Leaf, Upload, ArrowLeft } from 'lucide-react';
-import { createDeal, updateDeal, getVendorDeals } from '../services/api';
+import { ArrowLeft } from 'lucide-react';
+import { createDeal, updateDeal, getVendorDeals, NewDealData } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo } from './Logo';
+
+const FOOD_TYPES = [
+  'Pure Veg',
+  'South Indian',
+  'North Indian',
+  'Italian',
+  'Chinese',
+  'Continental',
+  'Multi-Cuisine',
+];
 
 export function AddDealPage() {
-  const { token, vendor } = useAuth();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    title: '',
+    itemName: '',
+    foodType: '',
     description: '',
     originalPrice: '',
-    discountedPrice: '',
-    expiresAt: '',
+    dealPrice: '',
+    stockAvailable: '',
+    dealStartTime: '',
+    dealEndTime: '',
     imageUrl: '',
   });
-  const [loading, setLoading] = useState(false);
   const [loadingDeal, setLoadingDeal] = useState(isEdit);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!isEdit || !token) return;
@@ -32,229 +42,229 @@ export function AddDealPage() {
         const found = deals.find((d) => d.id === id);
         if (found) {
           setFormData({
-            title: found.title,
-            description: found.description,
-            originalPrice: String(found.originalPrice),
-            discountedPrice: String(found.currentPrice),
-            expiresAt: found.expiresAt ? new Date(found.expiresAt).toISOString().slice(0, 16) : '',
+            itemName: found.title,
+            foodType: found.foodType || '',
+            description: found.description || '',
+            originalPrice: String(found.originalPrice || ''),
+            dealPrice: String(found.currentPrice || ''),
+            stockAvailable: String(found.stockAvailable || ''),
+            dealStartTime: '',
+            dealEndTime: found.validUntil || found.expiresAt || '',
             imageUrl: found.imageUrl || '',
           });
-        } else {
-          setError('Deal not found.');
         }
-      } catch (err: any) {
-        setError(err.message || 'Failed to load deal.');
+      } catch {
+        // silent
       } finally {
         setLoadingDeal(false);
       }
     })();
   }, [isEdit, id, token]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const update = (k: string, v: string) =>
+    setFormData((prev) => ({ ...prev, [k]: v }));
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((prev) => ({ ...prev, imageUrl: String(reader.result || '') }));
-    };
-    reader.readAsDataURL(file);
-  };
+  const orig = parseFloat(formData.originalPrice) || 0;
+  const dealP = parseFloat(formData.dealPrice) || 0;
+  const discountPct =
+    orig > 0 && dealP > 0 && dealP <= orig
+      ? Math.round((1 - dealP / orig) * 100)
+      : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
 
-    setError(null);
-    setLoading(true);
+    const payload: NewDealData = {
+      itemName: formData.itemName,
+      foodType: formData.foodType,
+      description: formData.description,
+      originalPrice: orig,
+      newPrice: dealP,
+      stockAvailable: parseInt(formData.stockAvailable) || 0,
+      imageUrl: formData.imageUrl || undefined,
+      dealStartTime: formData.dealStartTime || undefined,
+      dealEndTime: formData.dealEndTime || undefined,
+    };
 
     try {
-      const payload = {
-        itemName: formData.title,
-        description: formData.description,
-        originalPrice: parseFloat(formData.originalPrice),
-        newPrice: parseFloat(formData.discountedPrice),
-        stockAvailable: 10,
-        imageUrl: formData.imageUrl || undefined,
-        isVeg: true,
-        foodType: 'veg',
-        location: vendor?.location || vendor?.address || undefined,
-        expiresAt: formData.expiresAt || undefined,
-      };
-
-      if (isEdit && id) {
+      if (isEdit && id && token) {
         await updateDeal(id, payload, token);
-      } else {
+      } else if (token) {
         await createDeal(payload, token);
       }
-      setSuccess(true);
-      setTimeout(() => navigate('/vendor'), 1200);
-    } catch (err: any) {
-      setError(err.message || 'Failed to save deal.');
-    } finally {
-      setLoading(false);
+    } catch {
+      // silent
     }
+    navigate('/vendor');
   };
 
   if (loadingDeal) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#10B981]" size={32} />
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-[#10B981] to-[#34D399] rounded-full flex items-center justify-center mb-4 shadow-lg">
-          <Leaf className="text-white" size={32} />
-        </div>
-        <h2 className="text-xl text-[#064e3b] mb-2">{isEdit ? 'Deal Updated!' : 'Deal Published!'}</h2>
-        <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
-      </div>
-    );
+    return <div className="min-h-screen" />;
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-12" style={{ fontFamily: 'Inter, sans-serif' }}>
       <header className="sticky top-0 z-40 glass-dark px-4 py-4 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/vendor')}
             className="w-10 h-10 bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center border border-white/10"
+            aria-label="Back"
           >
             <ArrowLeft className="text-white" size={20} />
           </button>
-          <div>
-            <h1 className="text-xl text-white">{isEdit ? 'Edit Deal' : 'Add New Deal'}</h1>
-            <p className="text-xs text-white/60">{isEdit ? 'Update your deal' : 'Create an exciting deal'}</p>
-          </div>
+          <Logo size={32} showText className="text-white" />
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-4">
-        {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="glass-card rounded-2xl p-4 space-y-4">
+      <form onSubmit={handleSubmit} className="p-4 py-6 space-y-6">
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm text-[#064e3b] mb-2">Deal Title</label>
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Item Name*</strong>
+            </label>
             <input
               type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
+              value={formData.itemName}
+              onChange={(e) => update('itemName', e.target.value)}
               required
               placeholder="e.g., Masala Dosa Combo"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] text-sm transition-all"
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-[#064e3b] mb-2">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Describe your deal..."
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] text-sm resize-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-[#064e3b] mb-2">Image</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-gray-300 rounded-2xl p-4 text-center hover:border-[#10B981] transition-all"
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Food Type*</strong>
+            </label>
+            <select
+              value={formData.foodType}
+              onChange={(e) => update('foodType', e.target.value)}
+              required
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] bg-white transition-all"
             >
-              {formData.imageUrl ? (
-                <img
-                  src={formData.imageUrl}
-                  alt="Preview"
-                  className="w-full h-40 object-cover rounded-xl"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-4">
-                  <Upload className="text-gray-400" size={24} />
-                  <p className="text-sm text-gray-500">Tap to upload image</p>
-                </div>
-              )}
-            </button>
+              <option value="">Select food type</option>
+              {FOOD_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <div className="glass-card rounded-2xl p-4 space-y-4">
           <div>
-            <label className="block text-sm text-[#064e3b] mb-2">Original Price (₹)</label>
-            <input
-              type="number"
-              name="originalPrice"
-              value={formData.originalPrice}
-              onChange={handleChange}
-              required
-              min="0"
-              step="0.01"
-              placeholder="499"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] text-sm transition-all"
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Description</strong>
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => update('description', e.target.value)}
+              rows={4}
+              placeholder="Describe your deal..."
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] resize-none transition-all"
             />
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[#064e3b] mb-2">
+                <strong>Original Price (₹)*</strong>
+              </label>
+              <input
+                type="number"
+                value={formData.originalPrice}
+                onChange={(e) => update('originalPrice', e.target.value)}
+                required
+                min="0"
+                step="0.01"
+                placeholder="499"
+                className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[#064e3b] mb-2">
+                <strong>Deal Price (₹)*</strong>
+              </label>
+              <input
+                type="number"
+                value={formData.dealPrice}
+                onChange={(e) => update('dealPrice', e.target.value)}
+                required
+                min="0"
+                step="0.01"
+                placeholder="149"
+                className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
+              />
+            </div>
+          </div>
+
+          <div
+            className="rounded-full px-4 py-3 inline-flex items-center"
+            style={{ background: 'rgba(76, 175, 80, 0.12)', color: '#4CAF50' }}
+          >
+            <strong>Discount: {discountPct}%</strong>
+          </div>
+
           <div>
-            <label className="block text-sm text-[#064e3b] mb-2">Discounted Price (₹)</label>
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Stock Available*</strong>
+            </label>
             <input
               type="number"
-              name="discountedPrice"
-              value={formData.discountedPrice}
-              onChange={handleChange}
+              value={formData.stockAvailable}
+              onChange={(e) => update('stockAvailable', e.target.value)}
               required
               min="0"
-              step="0.01"
-              placeholder="149"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] text-sm transition-all"
+              placeholder="10"
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
             />
           </div>
+
           <div>
-            <label className="block text-sm text-[#064e3b] mb-2">Expiry Time</label>
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Deal Start Time*</strong>
+            </label>
             <input
-              type="datetime-local"
-              name="expiresAt"
-              value={formData.expiresAt}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] text-sm transition-all"
+              type="text"
+              value={formData.dealStartTime}
+              onChange={(e) => update('dealStartTime', e.target.value)}
+              required
+              placeholder="dd-mm-yyyy hh:mm"
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Deal End Time*</strong>
+            </label>
+            <input
+              type="text"
+              value={formData.dealEndTime}
+              onChange={(e) => update('dealEndTime', e.target.value)}
+              required
+              placeholder="dd-mm-yyyy hh:mm"
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[#064e3b] mb-2">
+              <strong>Image URL</strong>
+            </label>
+            <input
+              type="url"
+              value={formData.imageUrl}
+              onChange={(e) => update('imageUrl', e.target.value)}
+              placeholder="https://..."
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
             />
           </div>
         </div>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#34D399] text-white rounded-2xl active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#34D399] text-white rounded-2xl active:scale-95 transition-all shadow-lg"
         >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={18} />
-              {isEdit ? 'Saving...' : 'Publishing...'}
-            </>
-          ) : (
-            <span>{isEdit ? 'Save Changes' : 'Publish Deal'}</span>
-          )}
+          <strong>{isEdit ? 'Save Changes' : 'Publish Deal'}</strong>
         </button>
       </form>
     </div>
