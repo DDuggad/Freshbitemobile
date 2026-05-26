@@ -10,6 +10,7 @@ export function VendorLogin() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showColdStartMsg, setShowColdStartMsg] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -25,25 +26,21 @@ export function VendorLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
+
     try {
       const response = await vendorLogin({ email, password });
       const user = response.user || (response as any).vendor;
       login(response.token, user);
-    } catch {
-      login('demo-token', {
-        _id: 'demo',
-        id: 'demo',
-        email,
-        name: email.split('@')[0] || 'Vendor',
-        restaurantName: '',
-        location: '',
-        address: '',
-        phone: '',
-        profileCompleted: true,
-      } as any);
+      navigate('/vendor');
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Invalid credentials or server error.'
+      );
     } finally {
       setIsLoading(false);
-      navigate('/vendor');
     }
   };
 
@@ -91,6 +88,15 @@ export function VendorLogin() {
             />
           </div>
         </div>
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-2xl px-4 py-3 border border-red-200 bg-red-50 text-red-600"
+          >
+            <strong>{error}</strong>
+          </div>
+        )}
 
         <div className="space-y-2">
           <button
