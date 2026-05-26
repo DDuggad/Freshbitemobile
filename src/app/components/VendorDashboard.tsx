@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, LogOut, Pencil, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getVendorDeals, NormalizedDeal } from '../services/api';
+import { getVendorDealsByVendorId, getDeals, NormalizedDeal } from '../services/api';
 import { Logo } from './Logo';
 import { DealCard } from './DealCard';
 
@@ -42,7 +42,18 @@ export function VendorDashboard() {
     if (!token) return;
     try {
       setLoading(true);
-      const data = await getVendorDeals(token);
+      let data: NormalizedDeal[] = [];
+      if (vendor?.id) {
+        try {
+          data = await getVendorDealsByVendorId(vendor.id);
+        } catch {
+          // Fall back: filter the public deals list to this vendor
+          const all = await getDeals();
+          data = all.filter(
+            (d) => d.vendorId === vendor.id || d.vendor === vendor.restaurantName
+          );
+        }
+      }
       setDeals(data);
     } catch (err) {
       console.error('Error loading vendor deals:', err);
@@ -68,7 +79,13 @@ export function VendorDashboard() {
     return false;
   };
 
-  const filtered = deals.filter((d) => (tab === 'active' ? !isExpired(d) : isExpired(d)));
+  const filtered = deals
+    .filter((d) => (tab === 'active' ? !isExpired(d) : isExpired(d)))
+    .sort((a, b) => {
+      const ta = a.validUntil ? new Date(a.validUntil).getTime() : 0;
+      const tb = b.validUntil ? new Date(b.validUntil).getTime() : 0;
+      return tab === 'active' ? ta - tb : tb - ta;
+    });
 
   return (
     <div className="min-h-screen pb-28" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -76,7 +93,7 @@ export function VendorDashboard() {
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white truncate">
-              <strong>{vendor.restaurantName || vendor.name || 'My Restaurant'}</strong>
+              <strong>{vendor?.restaurantName || vendor?.username || 'Setup Profile'}</strong>
             </p>
           </div>
           <Logo size={32} />

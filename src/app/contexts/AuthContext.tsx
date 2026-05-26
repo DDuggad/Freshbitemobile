@@ -3,14 +3,18 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 export interface Vendor {
   id: string;
   _id?: string;
+  username?: string;
   name: string;
   email: string;
-  restaurantName: string;
+  restaurantName?: string;
   businessName?: string;
-  location: string;
+  location?: string;
   address?: string;
   phone?: string;
+  phoneNumber?: string;
   googleMapsLink?: string;
+  googleMapsLocation?: string;
+  restaurantImage?: string;
   profileCompleted: boolean;
 }
 
@@ -46,17 +50,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback((newToken: string, vendorData: any) => {
-    // Normalize the vendor object from various backend response shapes
+    // Normalize the vendor object — preserve backend fields verbatim, only filling id/_id/username.
+    const resolvedId = vendorData.id || vendorData._id || '';
     const normalized: Vendor = {
-      id: vendorData._id || vendorData.id || '',
-      name: vendorData.name || '',
-      email: vendorData.email || '',
-      restaurantName: vendorData.restaurantName || vendorData.businessName || '',
-      businessName: vendorData.restaurantName || vendorData.businessName || '',
-      location: vendorData.location || '',
-      address: vendorData.address || '',
-      phone: vendorData.phone || '',
-      googleMapsLink: vendorData.googleMapsLink || '',
+      ...vendorData,
+      id: resolvedId,
+      _id: resolvedId,
+      username: vendorData.username || '',
+      name: vendorData.name,
+      email: vendorData.email,
+      restaurantName: vendorData.restaurantName ?? vendorData.businessName,
+      businessName: vendorData.businessName ?? vendorData.restaurantName,
+      location: vendorData.location,
+      address: vendorData.address,
+      phone: vendorData.phone ?? vendorData.phoneNumber,
+      phoneNumber: vendorData.phoneNumber ?? vendorData.phone,
+      googleMapsLink: vendorData.googleMapsLink ?? vendorData.googleMapsLocation,
+      googleMapsLocation: vendorData.googleMapsLocation ?? vendorData.googleMapsLink,
       profileCompleted: vendorData.profileCompleted ?? false,
     };
 

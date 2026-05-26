@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
-import { createDeal, updateDeal, getVendorDeals, NewDealData } from '../services/api';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { createDealStrict, updateDeal, getVendorDealsByVendorId, NewDealData } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from './Logo';
 
@@ -16,7 +16,7 @@ const FOOD_TYPES = [
 ];
 
 export function AddDealPage() {
-  const { token } = useAuth();
+  const { token, vendor } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
@@ -33,12 +33,16 @@ export function AddDealPage() {
     imageUrl: '',
   });
   const [loadingDeal, setLoadingDeal] = useState(isEdit);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!isEdit || !token) return;
+    if (!isEdit || !token || !vendor?.id) {
+      if (isEdit && !vendor?.id) setLoadingDeal(false);
+      return;
+    }
     (async () => {
       try {
-        const deals = await getVendorDeals(token);
+        const deals = await getVendorDealsByVendorId(vendor.id);
         const found = deals.find((d) => d.id === id);
         if (found) {
           setFormData({
@@ -59,7 +63,7 @@ export function AddDealPage() {
         setLoadingDeal(false);
       }
     })();
-  }, [isEdit, id, token]);
+  }, [isEdit, id, token, vendor?.id]);
 
   const update = (k: string, v: string) =>
     setFormData((prev) => ({ ...prev, [k]: v }));
@@ -73,29 +77,53 @@ export function AddDealPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
-    const payload: NewDealData = {
+    if (isEdit) {
+      const editPayload: NewDealData = {
+        itemName: formData.itemName,
+        foodType: formData.foodType,
+        description: formData.description,
+        originalPrice: orig,
+        newPrice: dealP,
+        stockAvailable: parseInt(formData.stockAvailable) || 0,
+        imageUrl: formData.imageUrl || undefined,
+        dealStartTime: formData.dealStartTime || undefined,
+        dealEndTime: formData.dealEndTime || undefined,
+      };
+      try {
+        if (id && token) {
+          await updateDeal(id, editPayload, token);
+        }
+        navigate('/vendor');
+      } catch (err) {
+        alert((err as Error).message);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    const payload = {
       itemName: formData.itemName,
-      foodType: formData.foodType,
       description: formData.description,
-      originalPrice: orig,
-      newPrice: dealP,
-      stockAvailable: parseInt(formData.stockAvailable) || 0,
-      imageUrl: formData.imageUrl || undefined,
-      dealStartTime: formData.dealStartTime || undefined,
-      dealEndTime: formData.dealEndTime || undefined,
+      originalPrice: Number(formData.originalPrice),
+      newPrice: Number(formData.dealPrice),
+      stockAvailable: Number(formData.stockAvailable),
+      foodType: formData.foodType,
+      dealStartTime: new Date(formData.dealStartTime).toISOString(),
+      dealEndTime: new Date(formData.dealEndTime).toISOString(),
+      image: formData.imageUrl,
     };
 
     try {
-      if (isEdit && id && token) {
-        await updateDeal(id, payload, token);
-      } else if (token) {
-        await createDeal(payload, token);
-      }
-    } catch {
-      // silent
+      await createDealStrict(payload, token!);
+      navigate('/vendor');
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate('/vendor');
   };
 
   if (loadingDeal) {
@@ -223,11 +251,10 @@ export function AddDealPage() {
               <strong>Deal Start Time*</strong>
             </label>
             <input
-              type="text"
+              type="datetime-local"
               value={formData.dealStartTime}
               onChange={(e) => update('dealStartTime', e.target.value)}
               required
-              placeholder="dd-mm-yyyy hh:mm"
               className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
             />
           </div>
@@ -237,11 +264,10 @@ export function AddDealPage() {
               <strong>Deal End Time*</strong>
             </label>
             <input
-              type="text"
+              type="datetime-local"
               value={formData.dealEndTime}
               onChange={(e) => update('dealEndTime', e.target.value)}
               required
-              placeholder="dd-mm-yyyy hh:mm"
               className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#10B981] text-[#064e3b] transition-all"
             />
           </div>
@@ -262,9 +288,17 @@ export function AddDealPage() {
 
         <button
           type="submit"
-          className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#34D399] text-white rounded-2xl active:scale-95 transition-all shadow-lg"
+          disabled={isSubmitting}
+          className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#34D399] text-white rounded-2xl active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:active:scale-100"
         >
-          <strong>{isEdit ? 'Save Changes' : 'Publish Deal'}</strong>
+          {isSubmitting ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              <strong>Publishing...</strong>
+            </>
+          ) : (
+            <strong>{isEdit ? 'Save Changes' : 'Publish Deal'}</strong>
+          )}
         </button>
       </form>
     </div>

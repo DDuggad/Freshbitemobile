@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import { vendorSignup } from '../services/api';
+import { vendorSignup, updateVendorProfileStrict } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from './Logo';
 
@@ -43,36 +43,69 @@ export function VendorSignup() {
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Step 1: register
       const response = await vendorSignup({
         name: formData.username,
         email: formData.email,
         password: formData.password,
         restaurantName: formData.restaurantName,
-        location: formData.location,
-        address: formData.address,
-        phone: formData.phoneNumber,
-      } as any);
-      const user = response.user || (response as any).vendor;
-      login(response.token, {
-        ...user,
-        restaurantName: user?.restaurantName || formData.restaurantName,
-        location: user?.location || formData.location,
-        address: user?.address || formData.address,
-        phone: user?.phone || formData.phoneNumber,
-        googleMapsLink: (user as any)?.googleMapsLink || formData.googleMapsUrl,
-        profileCompleted: true,
       });
+      const user = response.user || (response as any).vendor;
+      const token = response.token;
+      login(token, { ...user, username: formData.username });
+
+      // Step 2: PUT profile details
+      try {
+        const updated = await updateVendorProfileStrict(
+          {
+            restaurantName: formData.restaurantName,
+            location: formData.location,
+            address: formData.address,
+            phoneNumber: formData.phoneNumber,
+            restaurantImage: formData.imageUrl || undefined,
+            googleMapsLocation: formData.googleMapsUrl || undefined,
+          },
+          token,
+        );
+        const mergedUser = {
+          ...user,
+          ...(updated.user || updated.vendor || updated),
+          username: formData.username,
+          profileCompleted: true,
+        };
+        login(token, mergedUser);
+      } catch {
+        // Profile PUT failed — keep the registered session but merge form data locally
+        login(token, {
+          ...user,
+          username: formData.username,
+          restaurantName: formData.restaurantName,
+          location: formData.location,
+          address: formData.address,
+          phoneNumber: formData.phoneNumber,
+          phone: formData.phoneNumber,
+          googleMapsLink: formData.googleMapsUrl,
+          googleMapsLocation: formData.googleMapsUrl,
+          restaurantImage: formData.imageUrl,
+          profileCompleted: true,
+        });
+      }
     } catch {
+      // Signup itself failed — silent demo fallback
       login('demo-token', {
         _id: 'demo',
         id: 'demo',
+        username: formData.username,
         name: formData.username,
         email: formData.email,
         restaurantName: formData.restaurantName,
         location: formData.location,
         address: formData.address,
         phone: formData.phoneNumber,
+        phoneNumber: formData.phoneNumber,
         googleMapsLink: formData.googleMapsUrl,
+        googleMapsLocation: formData.googleMapsUrl,
+        restaurantImage: formData.imageUrl,
         profileCompleted: true,
       } as any);
     }

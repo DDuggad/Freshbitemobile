@@ -22,8 +22,8 @@ export function VendorProfile() {
 
       <div className="px-4 pt-4 mb-4">
         <div className="glass-card rounded-2xl p-4 mb-3">
-          <p className="text-[#064e3b] truncate"><strong>{vendor.restaurantName || vendor.name}</strong></p>
-          <p className="text-gray-500 truncate">{vendor.email}</p>
+          <p className="text-[#064e3b] truncate"><strong>{vendor?.restaurantName || vendor?.username || 'Setup Profile'}</strong></p>
+          <p className="text-gray-500 truncate">{vendor?.email}</p>
         </div>
       </div>
 
@@ -33,11 +33,11 @@ export function VendorProfile() {
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 text-sm text-[#064e3b]">
               <Store size={16} className="text-[#10B981]" />
-              {vendor.restaurantName || '—'}
+              {vendor?.restaurantName || vendor?.username || 'Setup Profile'}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Mail size={16} className="text-[#10B981]" />
-              {vendor.email}
+              {vendor?.email}
             </div>
             {vendor.address && (
               <div className="flex items-center gap-2 text-sm text-gray-600">

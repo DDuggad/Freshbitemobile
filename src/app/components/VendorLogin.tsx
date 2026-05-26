@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { vendorLogin } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from './Logo';
@@ -8,11 +8,23 @@ import { Logo } from './Logo';
 export function VendorLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showColdStartMsg, setShowColdStartMsg] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!isLoading) {
+      setShowColdStartMsg(false);
+      return;
+    }
+    const t = setTimeout(() => setShowColdStartMsg(true), 5000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await vendorLogin({ email, password });
       const user = response.user || (response as any).vendor;
@@ -22,15 +34,17 @@ export function VendorLogin() {
         _id: 'demo',
         id: 'demo',
         email,
-        name: 'Demo Vendor',
-        restaurantName: 'My Restaurant',
+        name: email.split('@')[0] || 'Vendor',
+        restaurantName: '',
         location: '',
         address: '',
         phone: '',
         profileCompleted: true,
       } as any);
+    } finally {
+      setIsLoading(false);
+      navigate('/vendor');
     }
-    navigate('/vendor');
   };
 
   return (
@@ -78,12 +92,27 @@ export function VendorLogin() {
           </div>
         </div>
 
-        <button
-          type="submit"
-          className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#34D399] text-white rounded-2xl active:scale-95 transition-all shadow-lg"
-        >
-          <strong>Login</strong>
-        </button>
+        <div className="space-y-2">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#34D399] text-white rounded-2xl active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:active:scale-100"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <strong>Logging in...</strong>
+              </>
+            ) : (
+              <strong>Login</strong>
+            )}
+          </button>
+          {showColdStartMsg && (
+            <p className="text-center text-gray-500" style={{ fontSize: '12px' }}>
+              Waking up the server, this might take a moment...
+            </p>
+          )}
+        </div>
 
         <p className="text-center text-gray-600">
           Don't have an account?{' '}

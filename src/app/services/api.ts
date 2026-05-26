@@ -415,6 +415,64 @@ export async function getVendorDeals(token: string): Promise<NormalizedDeal[]> {
   return deals.map(normalizeDeal);
 }
 
+// Get vendor deals by vendor id (public endpoint)
+export async function getVendorDealsByVendorId(vendorId: string): Promise<NormalizedDeal[]> {
+  const res = await apiFetch(`/api/deals/vendor/${vendorId}`);
+  if (!res.ok) throw new Error(`Failed to fetch vendor deals: ${res.status}`);
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : (data.deals || data.data?.deals || []);
+  return list.map(normalizeDeal);
+}
+
+// ─── Strict-payload helpers (mirror exact MERN backend shapes) ───
+
+export interface CreateDealPayload {
+  itemName: string;
+  description: string;
+  originalPrice: number;
+  newPrice: number;
+  stockAvailable: number;
+  foodType: string;
+  dealStartTime: string; // ISO 8601
+  dealEndTime: string;   // ISO 8601
+  image: string;
+}
+
+export async function createDealStrict(payload: CreateDealPayload, token: string) {
+  const res = await apiFetch('/api/deals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: `Request failed (${res.status})` }));
+    throw new Error(err.message || `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export interface ProfileUpdatePayload {
+  restaurantName: string;
+  location: string;
+  address: string;
+  phoneNumber: string;
+  restaurantImage?: string;
+  googleMapsLocation?: string;
+}
+
+export async function updateVendorProfileStrict(payload: ProfileUpdatePayload, token: string) {
+  const res = await apiFetch('/api/auth/profile', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: `Profile update failed (${res.status})` }));
+    throw new Error(err.message || `Profile update failed (${res.status})`);
+  }
+  return res.json();
+}
+
 // ─── Vendors ───
 
 export async function getVendors(): Promise<VendorInfo[]> {
