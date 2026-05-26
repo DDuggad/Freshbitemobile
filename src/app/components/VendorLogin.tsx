@@ -23,22 +23,28 @@ export function VendorLogin() {
     return () => clearTimeout(t);
   }, [isLoading]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await vendorLogin({ email, password });
-      const user = response.user || (response as any).vendor;
-      login(response.token, user);
-      navigate('/vendor');
+      const data: any = await vendorLogin({ email, password });
+      console.log('API Success Payload:', data);
+
+      const token = data?.token;
+      const user = data?.user || data?.vendor;
+
+      if (!token || !user) {
+        throw new Error('Invalid response schema: Token or User missing from database payload.');
+      }
+
+      login(token, user);
+      navigate('/vendor', { replace: true });
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Invalid credentials or server error.'
-      );
+      console.error('Login Rejection:', err);
+      const backendError =
+        err.response?.data?.message || err.message || 'Server connection failed.';
+      setError(backendError);
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +64,12 @@ export function VendorLogin() {
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="p-4 py-6 space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }} className="p-4 py-6 space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium">
+            {error}
+          </div>
+        )}
         <div className="space-y-4">
           <div>
             <label className="block text-[#064e3b] mb-2">
@@ -88,15 +99,6 @@ export function VendorLogin() {
             />
           </div>
         </div>
-
-        {error && (
-          <div
-            role="alert"
-            className="rounded-2xl px-4 py-3 border border-red-200 bg-red-50 text-red-600"
-          >
-            <strong>{error}</strong>
-          </div>
-        )}
 
         <div className="space-y-2">
           <button

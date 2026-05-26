@@ -1,6 +1,22 @@
+import axios from 'axios';
 import fallbackDealsData from '../../imports/food-deals.json';
 
 const API_BASE_URL = 'https://freshbite.onrender.com';
+const API_URL = `${API_BASE_URL}/api`;
+
+export const api = axios.create({
+  baseURL: API_URL,
+  timeout: 60000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('vendorToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // ─── CORS Proxy Helper ───
 // The backend may not include this preview origin in its Access-Control-Allow-Origin header,
@@ -233,23 +249,8 @@ export interface NewDealData {
 // ─── Authentication ───
 
 export async function vendorLogin(data: VendorLoginData): Promise<{ token: string; user: VendorInfo }> {
-  const response = await apiFetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Login failed' }));
-    throw new Error(error.message || 'Login failed');
-  }
-
-  const result = await response.json();
-  console.log('Login response:', result);
-  return {
-    token: result.token,
-    user: result.user || result.vendor || result.data || result,
-  };
+  const response = await api.post('/auth/login', data);
+  return response.data;
 }
 
 export async function vendorSignup(data: VendorSignupData): Promise<{ token: string; user: VendorInfo }> {
