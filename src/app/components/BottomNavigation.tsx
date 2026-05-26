@@ -23,6 +23,7 @@ export function BottomNavigation() {
   const vendorNav = [
     { path: '/vendor', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/vendor/add-deal', icon: PlusCircle, label: 'Add Deal' },
+    { path: '/app/search', icon: Search, label: 'Search' },
     { path: '/vendor/profile', icon: User, label: 'Profile' },
   ];
 

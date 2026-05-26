@@ -1,83 +1,9 @@
-import axios from 'axios';
 import fallbackDealsData from '../../imports/food-deals.json';
 
 const API_BASE_URL = 'https://freshbite.onrender.com';
-const API_URL = `${API_BASE_URL}/api`;
-
-export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 60000,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('vendorToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// ─── CORS Proxy Helper ───
-// The backend may not include this preview origin in its Access-Control-Allow-Origin header,
-// so we route requests through a public CORS proxy.
-// We try multiple proxies as fallbacks since any single one may be unreliable.
-
-const CORS_PROXIES = [
-  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-];
-
-let workingProxyIndex = 0;
-
-// Track whether direct fetch has worked in this session. Preview/sandbox
-// environments routinely block cross-origin direct requests, so after the first
-// failure we skip straight to proxies and avoid noisy console warnings.
-let directFetchBlocked = false;
 
 async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
-  const targetUrl = `${API_BASE_URL}${path}`;
-
-  // 1. Try direct fetch first (unless we already know it's blocked)
-  if (!directFetchBlocked) {
-    try {
-      const res = await fetch(targetUrl, options);
-      if (res.ok) return res;
-      // Non-ok direct response — still return it; caller decides
-      return res;
-    } catch {
-      directFetchBlocked = true;
-    }
-  }
-
-  // 2. Try proxies, starting from the last one that worked
-  const proxyOrder = [
-    ...CORS_PROXIES.slice(workingProxyIndex),
-    ...CORS_PROXIES.slice(0, workingProxyIndex),
-  ];
-
-  let lastResponse: Response | null = null;
-  for (let i = 0; i < proxyOrder.length; i++) {
-    const makeUrl = proxyOrder[i];
-    const proxiedUrl = makeUrl(targetUrl);
-    try {
-      const res = await fetch(proxiedUrl, {
-        ...options,
-        headers: options?.method && options.method !== 'GET' ? options.headers : undefined,
-      });
-      if (res.ok) {
-        workingProxyIndex = CORS_PROXIES.indexOf(proxyOrder[i]);
-        return res;
-      }
-      lastResponse = res;
-    } catch {
-      // Network-level failure on this proxy — try the next one silently
-    }
-  }
-
-  if (lastResponse) return lastResponse;
-  throw new TypeError(`Network unavailable: could not reach ${path}`);
+  return fetch(`${API_BASE_URL}${path}`, options);
 }
 
 // ─── Interfaces ───
@@ -247,30 +173,75 @@ export interface NewDealData {
 }
 
 // ─── Authentication ───
-
-export async function vendorLogin(data: VendorLoginData): Promise<{ token: string; user: VendorInfo }> {
-  const response = await api.post('/auth/login', data);
-  return response.data;
-}
-
-export async function vendorSignup(data: VendorSignupData): Promise<{ token: string; user: VendorInfo }> {
-  const response = await apiFetch('/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Signup failed' }));
-    throw new Error(error.message || 'Signup failed');
+//
+// Backend schema (from server/routes/auth.js):
+//   POST /api/auth/login    body: { email, password }
+//   POST /api/auth/register body: { username, email, password }
+//   PUT  /api/auth/profile  Bearer token, body: { restaurantName, location, address,
+//                                                  phoneNumber, restaurantImage, googleMapsLocation }
+// All success responses: { message, token?, user: { id, username, email, role,
+//   profileCompleted, restaurantName, location, address, phoneNumber,
+//   restaurantImage, googleMapsLocation } }
+//
+async function parseAuthResponse(
+  response: Response,
+  fallbackError: string
+): Promise<{ token: string; user: VendorInfo }> {
+  const text = await response.text();
+  let body: any = {};
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    body = { message: text };
   }
 
-  const result = await response.json();
-  console.log('Signup response:', result);
-  return {
-    token: result.token,
-    user: result.user || result.vendor || result.data || result,
-  };
+  if (!response.ok) {
+    const validationMsg = Array.isArray(body?.errors) && body.errors[0]?.msg;
+    throw new Error(body?.message || validationMsg || `${fallbackError} (${response.status})`);
+  }
+
+  const u = body.user || body.vendor || {};
+  const user: VendorInfo = {
+    _id: u.id || u._id,
+    id: u.id || u._id,
+    username: u.username,
+    email: u.email,
+    restaurantName: u.restaurantName,
+    location: u.location,
+    address: u.address,
+    phone: u.phoneNumber || u.phone,
+    phoneNumber: u.phoneNumber,
+    restaurantImage: u.restaurantImage,
+    imageUrl: u.restaurantImage,
+    googleMapsLocation: u.googleMapsLocation,
+    googleMapsLink: u.googleMapsLocation,
+    role: u.role,
+    profileCompleted: u.profileCompleted,
+  } as any;
+
+  return { token: body.token, user };
+}
+
+export async function vendorLogin(
+  data: VendorLoginData
+): Promise<{ token: string; user: VendorInfo }> {
+  const response = await apiFetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return parseAuthResponse(response, 'Login failed');
+}
+
+export async function vendorSignup(
+  data: VendorSignupData
+): Promise<{ token: string; user: VendorInfo }> {
+  const response = await apiFetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return parseAuthResponse(response, 'Signup failed');
 }
 
 export async function updateVendorProfile(data: VendorProfileData, token: string): Promise<VendorInfo> {
@@ -311,7 +282,6 @@ export async function getDeals(params?: {
     if (!response.ok) throw new Error(`Failed to fetch deals: ${response.status}`);
 
     const data = await response.json();
-    console.log('API /api/deals raw response:', data);
 
     let deals: any[] = [];
     if (Array.isArray(data)) {
@@ -323,13 +293,10 @@ export async function getDeals(params?: {
       }
     }
 
-    console.log(`Parsed ${deals.length} deals from API`);
     return deals.map(normalizeDeal);
   } catch (error) {
     console.warn('API fetch failed, using local fallback data:', error);
-    // Fall back to bundled JSON snapshot of /api/deals
     const deals: any[] = Array.isArray(fallbackDealsData) ? fallbackDealsData : [];
-    console.log(`Loaded ${deals.length} deals from local fallback`);
     return deals.map(normalizeDeal);
   }
 }

@@ -28,23 +28,24 @@ export function VendorLogin() {
     setError(null);
 
     try {
-      const data: any = await vendorLogin({ email, password });
-      console.log('API Success Payload:', data);
+      const data = await vendorLogin({ email, password });
 
-      const token = data?.token;
-      const user = data?.user || data?.vendor;
+      const token = data.token;
+      const user = data.user || (data as any).vendor;
 
-      if (!token || !user) {
-        throw new Error('Invalid response schema: Token or User missing from database payload.');
+      if (!token) {
+        throw new Error('No authentication token received from server.');
       }
 
       login(token, user);
       navigate('/vendor', { replace: true });
     } catch (err: any) {
-      console.error('Login Rejection:', err);
-      const backendError =
-        err.response?.data?.message || err.message || 'Server connection failed.';
-      setError(backendError);
+      console.error('Login Error:', err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Invalid credentials or server error.'
+      );
     } finally {
       setIsLoading(false);
     }
